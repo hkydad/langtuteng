@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(cd frontend:*)",
+      "Bash(mvn clean:*)",
+      "Bash(java:*)",
+      "Bash(ls -la /d/ai-work/ltt/backend/target/*.jar)",
+      "Bash(curl -s http://localhost:8080/api/players)",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -X POST http://localhost:8080/api/players -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"张三\"\",\"\"phone\"\":\"\"13800138000\"\"}')",
+      "Bash(curl:*)",
+      "Bash(taskkill //F //IM java.exe)",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:8080/api/players' -Method GET | ConvertTo-Json\" 2>&1)",
+      "Bash(powershell -Command \"$body = '{\\\\\"name\\\\\":\\\\\"梅西\\\\\",\\\\\"phone\\\\\":\\\\\"13800138000\\\\\"}'; Invoke-RestMethod -Uri 'http://localhost:8080/api/players' -Method POST -Body $body -ContentType 'application/json' | ConvertTo-Json\" 2>&1)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"D:\\\\\\\\ai-work\\\\\\\\ltt\\\\\\\\test_api.ps1\" 2>&1)",
+      "Bash(rm -f /d/ai-work/ltt/*.bat)",
+      "Bash(ls /d/ai-work/ltt/*.bat)",
+      "Bash(ls:*)",
+      "Bash(xxd -l 16 \"D:/ai-work/ltt/start.bat\")",
+      "Bash(xxd -l 16 \"D:/ai-work/ltt/启动足球考勤系统.bat\")"
+    ]
+  }
+}

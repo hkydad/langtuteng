@@ -1,0 +1,15 @@
+com\football\attendance\service\AttendanceService.class
+com\football\attendance\service\MatchService.class
+com\football\attendance\controller\AttendanceController.class
+com\football\attendance\entity\Match.class
+com\football\attendance\service\PlayerService.class
+com\football\attendance\entity\Attendance.class
+com\football\attendance\entity\Player.class
+com\football\attendance\AttendanceApplication.class
+com\football\attendance\controller\PlayerController.class
+com\football\attendance\config\MyBatisPlusConfig.class
+com\football\attendance\mapper\AttendanceMapper.class
+com\football\attendance\config\MyBatisPlusConfig$1.class
+com\football\attendance\mapper\MatchMapper.class
+com\football\attendance\mapper\PlayerMapper.class
+com\football\attendance\controller\MatchController.class
