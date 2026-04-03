@@ -5,7 +5,7 @@ echo    User Management System Launcher
 echo ========================================
 echo.
 
-set PROJECT_DIR=D:\ai-work\ltt
+set PROJECT_DIR=D:\ai-work\workspace\langtuteng
 
 echo [1/3] Starting backend (SpringBoot)...
 start "SpringBoot" cmd /k "cd /d %PROJECT_DIR%\backend && mvn spring-boot:run"

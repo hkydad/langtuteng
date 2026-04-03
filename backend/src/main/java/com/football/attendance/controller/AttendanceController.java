@@ -17,7 +17,7 @@ public class AttendanceController {
     private AttendanceService attendanceService;
 
     @GetMapping("/match/{matchId}")
-    public List<Attendance> getByMatchId(@PathVariable Long matchId) {
+    public List<Map<String, Object>> getByMatchId(@PathVariable Long matchId) {
         return attendanceService.getByMatchId(matchId);
     }
 
@@ -26,8 +26,21 @@ public class AttendanceController {
         return attendanceService.save(attendance);
     }
 
+    @PostMapping("/batch")
+    public void batchSave(@RequestBody Map<String, Object> params) {
+        Long matchId = Long.valueOf(params.get("matchId").toString());
+        @SuppressWarnings("unchecked")
+        List<Long> playerIds = (List<Long>) params.get("playerIds");
+        attendanceService.batchSave(matchId, playerIds);
+    }
+
     @GetMapping("/summary")
     public List<Map<String, Object>> getSummary() {
         return attendanceService.getSummary();
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteById(@PathVariable Long id) {
+        attendanceService.deleteById(id);
     }
 }

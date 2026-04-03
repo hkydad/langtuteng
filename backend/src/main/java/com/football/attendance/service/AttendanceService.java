@@ -24,10 +24,44 @@ public class AttendanceService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    public List<Attendance> getByMatchId(Long matchId) {
+    public List<Map<String, Object>> getByMatchId(Long matchId) {
         QueryWrapper<Attendance> wrapper = new QueryWrapper<>();
         wrapper.eq("match_id", matchId);
-        return attendanceMapper.selectList(wrapper);
+        wrapper.eq("status", "PRESENT");
+        List<Attendance> attendances = attendanceMapper.selectList(wrapper);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Attendance a : attendances) {
+            Player player = playerMapper.selectById(a.getPlayerId());
+            if (player != null) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", a.getId());
+                item.put("matchId", a.getMatchId());
+                item.put("playerId", player.getId());
+                item.put("playerName", player.getName());
+                item.put("memberLevel", player.getMemberLevel());
+                item.put("phone", player.getPhone());
+                item.put("status", a.getStatus());
+                item.put("remark", a.getRemark());
+                item.put("createdAt", a.getCreatedAt());
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    public void batchSave(Long matchId, List<?> playerIds) {
+        for (Object pid : playerIds) {
+            Long playerId = ((Number) pid).longValue();
+            Integer existCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM attendance WHERE match_id = ? AND player_id = ?", Integer.class, matchId, playerId);
+            if (existCount != null && existCount > 0) {
+                continue;
+            }
+            Number maxIdNum = jdbcTemplate.queryForObject("SELECT MAX(id) FROM attendance", Number.class);
+            Long newId = maxIdNum == null ? 1 : maxIdNum.longValue() + 1;
+            jdbcTemplate.update("INSERT INTO attendance (id, match_id, player_id, status, created_at) VALUES (?, ?, ?, ?, ?)",
+                newId, matchId, playerId, "PRESENT", LocalDateTime.now());
+        }
     }
 
     public Attendance save(Attendance attendance) {
@@ -41,8 +75,8 @@ public class AttendanceService {
             attendanceMapper.updateById(attendance);
         } else {
             if (attendance.getId() == null) {
-                Long maxId = jdbcTemplate.queryForObject("SELECT MAX(id) FROM attendance", Long.class);
-                attendance.setId(maxId == null ? 1 : maxId + 1);
+                Number maxIdNum = jdbcTemplate.queryForObject("SELECT MAX(id) FROM attendance", Number.class);
+                attendance.setId(maxIdNum == null ? 1 : maxIdNum.longValue() + 1);
             }
             jdbcTemplate.update("INSERT INTO attendance (id, match_id, player_id, status, remark, created_at) VALUES (?, ?, ?, ?, ?, ?)",
                 attendance.getId(), attendance.getMatchId(), attendance.getPlayerId(),
@@ -52,9 +86,11 @@ public class AttendanceService {
     }
 
     public void deleteByMatchId(Long matchId) {
-        QueryWrapper<Attendance> wrapper = new QueryWrapper<>();
-        wrapper.eq("match_id", matchId);
-        attendanceMapper.delete(wrapper);
+        jdbcTemplate.update("DELETE FROM attendance WHERE match_id = ?", matchId);
+    }
+
+    public void deleteById(Long id) {
+        jdbcTemplate.update("DELETE FROM attendance WHERE id = ?", id);
     }
 
     public List<Map<String, Object>> getSummary() {

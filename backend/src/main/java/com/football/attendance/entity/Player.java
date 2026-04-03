@@ -11,6 +11,8 @@ public class Player {
     private Long id;
     private String name;
     private String phone;
+    private Integer memberLevel;
+    private String teamName;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 }

@@ -20,7 +20,8 @@
       "Bash(ls /d/ai-work/ltt/*.bat)",
       "Bash(ls:*)",
       "Bash(xxd -l 16 \"D:/ai-work/ltt/start.bat\")",
-      "Bash(xxd -l 16 \"D:/ai-work/ltt/启动足球考勤系统.bat\")"
+      "Bash(xxd -l 16 \"D:/ai-work/ltt/启动足球考勤系统.bat\")",
+      "Bash(sqlite3:*)"
     ]
   }
 }

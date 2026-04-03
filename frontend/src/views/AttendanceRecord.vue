@@ -1,13 +1,15 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const matches = ref([])
 const players = ref([])
 const selectedMatch = ref(null)
 const attendances = ref([])
 const loading = ref(false)
+const dialogVisible = ref(false)
+const selectedPlayerIds = ref([])
 
 const fetchMatches = async () => {
   try {
@@ -40,48 +42,50 @@ const fetchAttendances = async () => {
   }
 }
 
-const getAttendanceStatus = (playerId) => {
-  const record = attendances.value.find(a => a.playerId === playerId)
-  return record ? record.status : null
+const openAttendanceDialog = () => {
+  if (!selectedMatch.value) {
+    ElMessage.warning('请先选择一场比赛')
+    return
+  }
+  selectedPlayerIds.value = []
+  dialogVisible.value = true
 }
 
-const getAttendanceRemark = (playerId) => {
-  const record = attendances.value.find(a => a.playerId === playerId)
-  return record ? record.remark : ''
-}
-
-const handleStatusChange = async (playerId, status) => {
+const handleSave = async () => {
   if (!selectedMatch.value) return
   try {
-    await axios.post('/api/attendances', {
+    await axios.post('/api/attendances/batch', {
       matchId: selectedMatch.value,
-      playerId,
-      status,
-      remark: getAttendanceRemark(playerId)
+      playerIds: selectedPlayerIds.value
     })
-    ElMessage.success('考勤已更新')
+    ElMessage.success('考勤保存成功')
+    dialogVisible.value = false
     fetchAttendances()
   } catch (error) {
-    ElMessage.error('更新考勤失败')
+    console.error('保存考勤失败:', error)
+    ElMessage.error('保存考勤失败: ' + (error.response?.data || error.message))
   }
 }
 
-const handleRemarkChange = async (playerId, remark) => {
-  if (!selectedMatch.value) return
-  const status = getAttendanceStatus(playerId) || 'PRESENT'
+const handleMatchChange = () => {
+  attendances.value = []
+  fetchAttendances()
+}
+
+const handleDelete = async (row) => {
   try {
-    await axios.post('/api/attendances', {
-      matchId: selectedMatch.value,
-      playerId,
-      status,
-      remark
+    await ElMessageBox.confirm('确定要删除该考勤记录吗?', '提示', {
+      type: 'warning'
     })
+    await axios.delete(`/api/attendances/${row.id}`)
+    ElMessage.success('删除成功')
+    fetchAttendances()
   } catch (error) {
-    ElMessage.error('更新备注失败')
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
-
-watch(selectedMatch, fetchAttendances)
 
 onMounted(() => {
   fetchMatches()
@@ -97,34 +101,45 @@ onMounted(() => {
 
     <el-form :inline="true" style="margin-bottom: 20px">
       <el-form-item label="选择比赛">
-        <el-select v-model="selectedMatch" placeholder="请选择比赛" style="width: 300px">
+        <el-select v-model="selectedMatch" placeholder="请选择比赛" style="width: 300px" @change="handleMatchChange">
           <el-option v-for="match in matches" :key="match.id" :label="`${match.matchDate} - ${match.location}`" :value="match.id" />
         </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" :disabled="!selectedMatch" @click="openAttendanceDialog">新增考勤</el-button>
       </el-form-item>
     </el-form>
 
     <el-empty v-if="!selectedMatch" description="请先选择一场比赛" />
-    <el-table v-else :data="players" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="name" label="球员姓名" />
-      <el-table-column prop="phone" label="手机号" />
-      <el-table-column label="出勤状态" width="200">
+    <el-table v-else :data="attendances" v-loading="loading" stripe>
+      <el-table-column prop="playerId" label="ID" width="80" />
+      <el-table-column prop="memberLevel" label="会员等级" width="120">
         <template #default="{ row }">
-          <el-radio-group :model-value="getAttendanceStatus(row.id)" @update:model-value="(val) => handleStatusChange(row.id, val)">
-            <el-radio value="PRESENT">出勤</el-radio>
-            <el-radio value="ABSENT">请假</el-radio>
-          </el-radio-group>
+          {{ row.memberLevel === 500 ? '500' : row.memberLevel === 200 ? '200' : '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="备注">
+      <el-table-column prop="playerName" label="球员姓名" />
+      <el-table-column prop="phone" label="手机号" />
+      <el-table-column prop="remark" label="备注" />
+      <el-table-column label="操作" width="100">
         <template #default="{ row }">
-          <el-input
-            :model-value="getAttendanceRemark(row.id)"
-            placeholder="输入备注"
-            @blur="(e) => handleRemarkChange(row.id, e.target.value)"
-          />
+          <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <el-dialog v-model="dialogVisible" title="考勤登记" width="600px">
+      <div style="margin-bottom: 10px">
+        <el-checkbox-group v-model="selectedPlayerIds">
+          <el-checkbox v-for="player in players" :key="player.id" :value="player.id" style="margin: 5px 10px">
+            {{ player.name }} ({{ player.memberLevel === 500 ? '500' : player.memberLevel === 200 ? '200' : '-' }})
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSave">确定</el-button>
+      </template>
+    </el-dialog>
   </el-card>
 </template>

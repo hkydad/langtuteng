@@ -10,9 +10,12 @@ const activeIndex = computed(() => route.path)
 const menuItems = [
   { path: '/', label: '首页', icon: 'Odometer' },
   { path: '/players', label: '球员管理', icon: 'User' },
+  { path: '/teams', label: '队伍管理', icon: 'Grid' },
   { path: '/matches', label: '比赛管理', icon: 'Calendar' },
   { path: '/attendance', label: '考勤记录', icon: 'Edit' },
-  { path: '/report', label: '考勤汇总', icon: 'DataLine' }
+  { path: '/report', label: '考勤汇总', icon: 'DataLine' },
+  { path: '/match-stats', label: '比赛数据录入', icon: 'DataAnalysis' },
+  { path: '/stats-leaderboard', label: '数据总榜', icon: 'TrendCharts' }
 ]
 
 const handleMenuSelect = (path) => {

@@ -4,13 +4,16 @@ import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const players = ref([])
+const teams = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const form = ref({
   id: null,
   name: '',
-  phone: ''
+  phone: '',
+  memberLevel: null,
+  teamName: ''
 })
 
 const fetchPlayers = async () => {
@@ -25,9 +28,18 @@ const fetchPlayers = async () => {
   }
 }
 
+const fetchTeams = async () => {
+  try {
+    const res = await axios.get('/api/teams')
+    teams.value = res.data
+  } catch (error) {
+    ElMessage.error('获取队伍列表失败')
+  }
+}
+
 const openAddDialog = () => {
   isEdit.value = false
-  form.value = { id: null, name: '', phone: '' }
+  form.value = { id: null, name: '', phone: '', memberLevel: null, teamName: '' }
   dialogVisible.value = true
 }
 
@@ -72,7 +84,10 @@ const handleDelete = async (row) => {
   }
 }
 
-onMounted(fetchPlayers)
+onMounted(() => {
+  fetchPlayers()
+  fetchTeams()
+})
 </script>
 
 <template>
@@ -86,6 +101,12 @@ onMounted(fetchPlayers)
 
     <el-table :data="players" v-loading="loading" stripe>
       <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="memberLevel" label="会员等级" width="120">
+        <template #default="{ row }">
+          {{ row.memberLevel === 500 ? '500' : row.memberLevel === 200 ? '200' : '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="teamName" label="所属队伍" />
       <el-table-column prop="name" label="姓名" />
       <el-table-column prop="phone" label="手机号" />
       <el-table-column prop="createdAt" label="创建时间" />
@@ -104,6 +125,17 @@ onMounted(fetchPlayers)
         </el-form-item>
         <el-form-item label="手机号">
           <el-input v-model="form.phone" placeholder="请输入手机号" />
+        </el-form-item>
+        <el-form-item label="会员等级">
+          <el-select v-model="form.memberLevel" placeholder="请选择会员等级" style="width: 100%">
+            <el-option :value="500" label="500" />
+            <el-option :value="200" label="200" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属队伍">
+          <el-select v-model="form.teamName" placeholder="请选择队伍" style="width: 100%">
+            <el-option v-for="t in teams" :key="t.id" :label="t.name" :value="t.name" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>

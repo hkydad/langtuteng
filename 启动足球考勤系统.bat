@@ -5,7 +5,7 @@ echo    Football Attendance System Launcher
 echo ========================================
 echo.
 
-set PROJECT_DIR=D:\ai-work\ltt
+set PROJECT_DIR=D:\ai-work\workspace\langtuteng
 
 echo [1/3] Starting backend...
 start "FootballBackend" cmd /k "cd /d %PROJECT_DIR%\backend && java -jar target\attendance-1.0.0.jar"

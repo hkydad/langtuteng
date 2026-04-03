@@ -29,16 +29,19 @@ public class PlayerService {
 
     public Player save(Player player) {
         if (player.getId() == null) {
-            Long maxId = jdbcTemplate.queryForObject("SELECT MAX(id) FROM player", Long.class);
-            player.setId(maxId == null ? 1 : maxId + 1);
+            Number maxIdNum = jdbcTemplate.queryForObject("SELECT MAX(id) FROM player", Number.class);
+            player.setId(maxIdNum == null ? 1 : maxIdNum.longValue() + 1);
+            jdbcTemplate.update("INSERT INTO player (id, name, phone, member_level, team_name, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                player.getId(), player.getName(), player.getPhone(), player.getMemberLevel(), player.getTeamName(), LocalDateTime.now());
+        } else {
+            update(player);
         }
-        jdbcTemplate.update("INSERT INTO player (id, name, phone, created_at) VALUES (?, ?, ?, ?)",
-            player.getId(), player.getName(), player.getPhone(), LocalDateTime.now());
         return player;
     }
 
     public int update(Player player) {
-        return playerMapper.updateById(player);
+        return jdbcTemplate.update("UPDATE player SET name = ?, phone = ?, member_level = ?, team_name = ? WHERE id = ?",
+            player.getName(), player.getPhone(), player.getMemberLevel(), player.getTeamName(), player.getId());
     }
 
     public int delete(Long id) {
