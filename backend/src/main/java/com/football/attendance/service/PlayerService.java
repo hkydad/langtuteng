@@ -23,6 +23,24 @@ public class PlayerService {
         return playerMapper.selectList(new QueryWrapper<>());
     }
 
+    public List<Player> listBySeason(Integer season) {
+        if (season == null) {
+            return list();
+        }
+        return jdbcTemplate.query(
+            "SELECT * FROM player WHERE season = ? ORDER BY id",
+            (rs, rowNum) -> {
+                Player p = new Player();
+                p.setId(rs.getLong("id"));
+                p.setName(rs.getString("name"));
+                p.setPhone(rs.getString("phone"));
+                p.setMemberLevel(rs.getObject("member_level") != null ? rs.getInt("member_level") : null);
+                p.setTeamName(rs.getString("team_name"));
+                p.setSeason(rs.getObject("season") != null ? rs.getInt("season") : null);
+                return p;
+            }, season);
+    }
+
     public Player getById(Long id) {
         return playerMapper.selectById(id);
     }
@@ -31,17 +49,18 @@ public class PlayerService {
         if (player.getId() == null) {
             Number maxIdNum = jdbcTemplate.queryForObject("SELECT MAX(id) FROM player", Number.class);
             player.setId(maxIdNum == null ? 1 : maxIdNum.longValue() + 1);
-            jdbcTemplate.update("INSERT INTO player (id, name, phone, member_level, team_name, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                player.getId(), player.getName(), player.getPhone(), player.getMemberLevel(), player.getTeamName(), LocalDateTime.now());
-        } else {
-            update(player);
         }
+        if (player.getSeason() == null) {
+            return player;
+        }
+        jdbcTemplate.update("INSERT INTO player (id, name, phone, member_level, team_name, season, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            player.getId(), player.getName(), player.getPhone(), player.getMemberLevel(), player.getTeamName(), player.getSeason(), LocalDateTime.now());
         return player;
     }
 
     public int update(Player player) {
-        return jdbcTemplate.update("UPDATE player SET name = ?, phone = ?, member_level = ?, team_name = ? WHERE id = ?",
-            player.getName(), player.getPhone(), player.getMemberLevel(), player.getTeamName(), player.getId());
+        return jdbcTemplate.update("UPDATE player SET name = ?, phone = ?, member_level = ?, team_name = ?, season = ? WHERE id = ?",
+            player.getName(), player.getPhone(), player.getMemberLevel(), player.getTeamName(), player.getSeason(), player.getId());
     }
 
     public int delete(Long id) {

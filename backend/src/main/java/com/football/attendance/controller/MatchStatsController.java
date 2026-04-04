@@ -77,17 +77,17 @@ public class MatchStatsController {
     }
 
     @GetMapping("/leaderboard/goals")
-    public List<Map<String, Object>> getGoalLeaderboard() {
-        return matchStatsService.getGoalLeaderboard();
+    public List<Map<String, Object>> getGoalLeaderboard(@RequestParam(required = false) Integer season) {
+        return matchStatsService.getGoalLeaderboard(season);
     }
 
     @GetMapping("/leaderboard/assists")
-    public List<Map<String, Object>> getAssistLeaderboard() {
-        return matchStatsService.getAssistLeaderboard();
+    public List<Map<String, Object>> getAssistLeaderboard(@RequestParam(required = false) Integer season) {
+        return matchStatsService.getAssistLeaderboard(season);
     }
 
     @GetMapping("/leaderboard/goalkeepers")
-    public List<Map<String, Object>> getGoalkeeperLeaderboard() {
-        return matchStatsService.getGoalkeeperLeaderboard();
+    public List<Map<String, Object>> getGoalkeeperLeaderboard(@RequestParam(required = false) Integer season) {
+        return matchStatsService.getGoalkeeperLeaderboard(season);
     }
 }

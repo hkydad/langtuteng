@@ -16,7 +16,10 @@ public class PlayerController {
     private PlayerService playerService;
 
     @GetMapping
-    public List<Player> list() {
+    public List<Player> list(@RequestParam(required = false) Integer season) {
+        if (season != null) {
+            return playerService.listBySeason(season);
+        }
         return playerService.list();
     }
 

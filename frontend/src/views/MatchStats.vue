@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, inject } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -12,6 +12,7 @@ const selectedQuarter = ref(null)
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const currentSeason = inject('seasonState')
 const quarterForm = ref({
   id: null,
   matchId: null,
@@ -32,7 +33,7 @@ const goalkeeperRecords = ref([])
 
 const fetchMatches = async () => {
   try {
-    const res = await axios.get('/api/matches')
+    const res = await axios.get('/api/matches', { params: { season: currentSeason?.current } })
     matches.value = res.data
   } catch (error) {
     ElMessage.error('获取比赛列表失败')
@@ -41,7 +42,8 @@ const fetchMatches = async () => {
 
 const fetchPlayers = async () => {
   try {
-    const res = await axios.get('/api/players')
+    const season = currentSeason?.current || localStorage.getItem('currentSeason')
+    const res = await axios.get('/api/players', { params: { season } })
     players.value = res.data
   } catch (error) {
     ElMessage.error('获取球员列表失败')
@@ -50,7 +52,8 @@ const fetchPlayers = async () => {
 
 const fetchTeams = async () => {
   try {
-    const res = await axios.get('/api/teams')
+    const season = currentSeason?.current || localStorage.getItem('currentSeason')
+    const res = await axios.get('/api/teams', { params: { season } })
     teams.value = res.data
   } catch (error) {
     ElMessage.error('获取队伍列表失败')
@@ -263,6 +266,18 @@ watch(selectedMatch, () => {
   assistRecords.value = []
   goalkeeperRecords.value = []
   fetchQuarters()
+})
+
+watch(() => currentSeason?.current, () => {
+  selectedMatch.value = null
+  selectedQuarter.value = null
+  quarters.value = []
+  goalRecords.value = []
+  assistRecords.value = []
+  goalkeeperRecords.value = []
+  fetchMatches()
+  fetchPlayers()
+  fetchTeams()
 })
 
 onMounted(() => {

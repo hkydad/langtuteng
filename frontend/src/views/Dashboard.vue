@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, inject } from 'vue'
 import axios from 'axios'
 
 const stats = ref({
@@ -10,13 +10,15 @@ const stats = ref({
 })
 
 const recentMatches = ref([])
+const seasonState = inject('seasonState')
 
 const fetchData = async () => {
   try {
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
     const [players, matches, summary] = await Promise.all([
-      axios.get('/api/players'),
-      axios.get('/api/matches'),
-      axios.get('/api/attendances/summary')
+      axios.get('/api/players', { params: { season } }),
+      axios.get('/api/matches', { params: { season } }),
+      axios.get('/api/attendances/summary', { params: { season } })
     ])
 
     stats.value.playerCount = players.data.length
@@ -36,6 +38,10 @@ const fetchData = async () => {
     console.error('Failed to fetch data:', error)
   }
 }
+
+watch(() => seasonState?.current, () => {
+  fetchData()
+})
 
 onMounted(fetchData)
 </script>

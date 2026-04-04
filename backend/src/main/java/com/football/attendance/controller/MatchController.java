@@ -16,7 +16,10 @@ public class MatchController {
     private MatchService matchService;
 
     @GetMapping
-    public List<Match> list() {
+    public List<Match> list(@RequestParam(required = false) Integer season) {
+        if (season != null) {
+            return matchService.listBySeason(season);
+        }
         return matchService.list();
     }
 

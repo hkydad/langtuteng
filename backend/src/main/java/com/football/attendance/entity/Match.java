@@ -12,6 +12,7 @@ public class Match {
     private Long id;
     private LocalDate matchDate;
     private String location;
+    private Integer season;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 }

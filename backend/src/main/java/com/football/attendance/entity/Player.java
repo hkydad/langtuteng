@@ -13,6 +13,7 @@ public class Player {
     private String phone;
     private Integer memberLevel;
     private String teamName;
+    private Integer season;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 }

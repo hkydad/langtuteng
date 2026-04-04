@@ -16,13 +16,23 @@ public class TeamController {
     private TeamService teamService;
 
     @GetMapping
-    public List<Team> list() {
+    public List<Team> list(@RequestParam(required = false) Integer season) {
+        if (season != null) {
+            return teamService.listBySeason(season);
+        }
         return teamService.list();
     }
 
     @PostMapping
     public Team save(@RequestBody Team team) {
         return teamService.save(team);
+    }
+
+    @PutMapping("/{id}")
+    public Team update(@PathVariable Long id, @RequestBody Team team) {
+        team.setId(id);
+        teamService.update(team);
+        return team;
     }
 
     @DeleteMapping("/{id}")

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, inject } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -8,18 +8,21 @@ const teams = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const seasonState = inject('seasonState')
 const form = ref({
   id: null,
   name: '',
   phone: '',
   memberLevel: null,
-  teamName: ''
+  teamName: '',
+  season: null
 })
 
 const fetchPlayers = async () => {
   loading.value = true
   try {
-    const res = await axios.get('/api/players')
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
+    const res = await axios.get('/api/players', { params: { season } })
     players.value = res.data
   } catch (error) {
     ElMessage.error('获取球员列表失败')
@@ -30,7 +33,8 @@ const fetchPlayers = async () => {
 
 const fetchTeams = async () => {
   try {
-    const res = await axios.get('/api/teams')
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
+    const res = await axios.get('/api/teams', { params: { season } })
     teams.value = res.data
   } catch (error) {
     ElMessage.error('获取队伍列表失败')
@@ -39,7 +43,7 @@ const fetchTeams = async () => {
 
 const openAddDialog = () => {
   isEdit.value = false
-  form.value = { id: null, name: '', phone: '', memberLevel: null, teamName: '' }
+  form.value = { id: null, name: '', phone: '', memberLevel: null, teamName: '', season: seasonState.current }
   dialogVisible.value = true
 }
 
@@ -59,6 +63,7 @@ const handleSave = async () => {
       await axios.put(`/api/players/${form.value.id}`, form.value)
       ElMessage.success('更新成功')
     } else {
+      form.value.season = seasonState.current
       await axios.post('/api/players', form.value)
       ElMessage.success('添加成功')
     }
@@ -83,6 +88,11 @@ const handleDelete = async (row) => {
     }
   }
 }
+
+watch(() => seasonState?.current, () => {
+  fetchPlayers()
+  fetchTeams()
+})
 
 onMounted(() => {
   fetchPlayers()

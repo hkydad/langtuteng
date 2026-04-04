@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, inject } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
@@ -7,14 +7,16 @@ const goalLeaderboard = ref([])
 const assistLeaderboard = ref([])
 const goalkeeperLeaderboard = ref([])
 const loading = ref(false)
+const seasonState = inject('seasonState')
 
 const fetchLeaderboard = async () => {
   loading.value = true
   try {
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
     const [goalRes, assistRes, gkRes] = await Promise.all([
-      axios.get('/api/match-stats/leaderboard/goals'),
-      axios.get('/api/match-stats/leaderboard/assists'),
-      axios.get('/api/match-stats/leaderboard/goalkeepers')
+      axios.get('/api/match-stats/leaderboard/goals', { params: { season } }),
+      axios.get('/api/match-stats/leaderboard/assists', { params: { season } }),
+      axios.get('/api/match-stats/leaderboard/goalkeepers', { params: { season } })
     ])
     goalLeaderboard.value = goalRes.data
     assistLeaderboard.value = assistRes.data
@@ -25,6 +27,10 @@ const fetchLeaderboard = async () => {
     loading.value = false
   }
 }
+
+watch(() => seasonState?.current, () => {
+  fetchLeaderboard()
+})
 
 onMounted(() => {
   fetchLeaderboard()

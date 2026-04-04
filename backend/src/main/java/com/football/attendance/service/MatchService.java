@@ -26,22 +26,45 @@ public class MatchService {
         return matchMapper.selectList(wrapper);
     }
 
+    public List<Match> listBySeason(Integer season) {
+        if (season == null) {
+            return list();
+        }
+        return jdbcTemplate.query(
+            "SELECT * FROM football_match WHERE season = ? ORDER BY match_date DESC",
+            (rs, rowNum) -> {
+                Match m = new Match();
+                m.setId(rs.getLong("id"));
+                m.setMatchDate(LocalDate.parse(rs.getString("match_date")));
+                m.setLocation(rs.getString("location"));
+                m.setSeason(rs.getObject("season") != null ? rs.getInt("season") : null);
+                return m;
+            }, season);
+    }
+
     public Match getById(Long id) {
         return matchMapper.selectById(id);
     }
 
     public Match save(Match match) {
         if (match.getId() == null) {
-            Long maxId = jdbcTemplate.queryForObject("SELECT MAX(id) FROM football_match", Long.class);
-            match.setId(maxId == null ? 1 : maxId + 1);
+            Number maxIdNum = jdbcTemplate.queryForObject("SELECT MAX(id) FROM football_match", Number.class);
+            match.setId(maxIdNum == null ? 1 : maxIdNum.longValue() + 1);
         }
-        jdbcTemplate.update("INSERT INTO football_match (id, match_date, location, created_at) VALUES (?, ?, ?, ?)",
-            match.getId(), match.getMatchDate(), match.getLocation(), LocalDateTime.now());
+        if (match.getSeason() == null) {
+            match.setSeason(match.getMatchDate().getYear());
+        }
+        jdbcTemplate.update("INSERT INTO football_match (id, match_date, location, season, created_at) VALUES (?, ?, ?, ?, ?)",
+            match.getId(), match.getMatchDate().toString(), match.getLocation(), match.getSeason(), LocalDateTime.now());
         return match;
     }
 
     public int update(Match match) {
-        return matchMapper.updateById(match);
+        if (match.getSeason() == null) {
+            match.setSeason(match.getMatchDate().getYear());
+        }
+        return jdbcTemplate.update("UPDATE football_match SET match_date = ?, location = ?, season = ? WHERE id = ?",
+            match.getMatchDate().toString(), match.getLocation(), match.getSeason(), match.getId());
     }
 
     public int delete(Long id) {

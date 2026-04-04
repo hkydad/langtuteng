@@ -93,42 +93,76 @@ public class AttendanceService {
         jdbcTemplate.update("DELETE FROM attendance WHERE id = ?", id);
     }
 
-    public List<Map<String, Object>> getSummary() {
-        List<Player> players = playerMapper.selectList(new QueryWrapper<>());
+    public List<Map<String, Object>> getSummary(Integer season) {
+        // 获取当赛季总比赛场次
+        int seasonMatchCount = 0;
+        if (season != null) {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM football_match WHERE season = ?", Integer.class, season);
+            seasonMatchCount = count != null ? count : 0;
+        } else {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM football_match", Integer.class);
+            seasonMatchCount = count != null ? count : 0;
+        }
+
+        // 获取所有球员
+        List<Player> players;
+        if (season != null) {
+            players = jdbcTemplate.query(
+                "SELECT * FROM player WHERE season = ?",
+                (rs, rowNum) -> {
+                    Player p = new Player();
+                    p.setId(rs.getLong("id"));
+                    p.setName(rs.getString("name"));
+                    p.setPhone(rs.getString("phone"));
+                    p.setMemberLevel(rs.getObject("member_level") != null ? rs.getInt("member_level") : null);
+                    p.setTeamName(rs.getString("team_name"));
+                    p.setSeason(rs.getObject("season") != null ? rs.getInt("season") : null);
+                    return p;
+                }, season);
+        } else {
+            players = playerMapper.selectList(new QueryWrapper<>());
+        }
+
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Player player : players) {
             Map<String, Object> stat = new HashMap<>();
             stat.put("playerId", player.getId());
             stat.put("playerName", player.getName());
-            stat.put("phone", player.getPhone());
 
-            QueryWrapper<Attendance> wrapper = new QueryWrapper<>();
-            wrapper.eq("player_id", player.getId());
-            List<Attendance> attendances = attendanceMapper.selectList(wrapper);
-
-            int totalMatches = attendances.size();
+            // 获取该球员在当赛季的出勤次数
             int presentCount = 0;
-            int absentCount = 0;
-
-            for (Attendance a : attendances) {
-                if ("PRESENT".equals(a.getStatus())) {
-                    presentCount++;
-                } else if ("ABSENT".equals(a.getStatus())) {
-                    absentCount++;
-                }
+            if (season != null) {
+                Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM attendance a " +
+                    "LEFT JOIN football_match m ON a.match_id = m.id " +
+                    "WHERE a.player_id = ? AND m.season = ? AND a.status = 'PRESENT'",
+                    Integer.class, player.getId(), season);
+                presentCount = count != null ? count : 0;
+            } else {
+                QueryWrapper<Attendance> wrapper = new QueryWrapper<>();
+                wrapper.eq("player_id", player.getId()).eq("status", "PRESENT");
+                presentCount = attendanceMapper.selectCount(wrapper).intValue();
             }
 
-            stat.put("totalMatches", totalMatches);
+            // 计算出勤率
+            double attendanceRate = seasonMatchCount > 0
+                ? Math.round((double) presentCount / seasonMatchCount * 10000) / 100.0
+                : 0.0;
+
+            stat.put("seasonMatchCount", seasonMatchCount);
             stat.put("presentCount", presentCount);
-            stat.put("absentCount", absentCount);
-            stat.put("attendanceRate", totalMatches > 0 ? (double) presentCount / totalMatches * 100 : 0);
+            stat.put("attendanceRate", attendanceRate);
 
             result.add(stat);
         }
 
+        // 按出勤率降序排序
         result.sort((a, b) -> Double.compare((Double) b.get("attendanceRate"), (Double) a.get("attendanceRate")));
 
+        // 添加排名
         for (int i = 0; i < result.size(); i++) {
             result.get(i).put("rank", i + 1);
         }

@@ -4,12 +4,28 @@ CREATE TABLE IF NOT EXISTS player (
     phone TEXT,
     member_level INTEGER,
     team_name TEXT,
+    season INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS team (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    season INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS season (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    year INTEGER NOT NULL,
+    name TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS venue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    address TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -17,6 +33,7 @@ CREATE TABLE IF NOT EXISTS football_match (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_date TEXT NOT NULL,
     location TEXT,
+    season INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 

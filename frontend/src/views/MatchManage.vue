@@ -1,22 +1,26 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, inject } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const matches = ref([])
+const venues = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const seasonState = inject('seasonState')
 const form = ref({
   id: null,
   matchDate: '',
-  location: ''
+  location: '',
+  season: null
 })
 
 const fetchMatches = async () => {
   loading.value = true
   try {
-    const res = await axios.get('/api/matches')
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
+    const res = await axios.get('/api/matches', { params: { season } })
     matches.value = res.data
   } catch (error) {
     ElMessage.error('获取比赛列表失败')
@@ -25,9 +29,18 @@ const fetchMatches = async () => {
   }
 }
 
+const fetchVenues = async () => {
+  try {
+    const res = await axios.get('/api/venues')
+    venues.value = res.data
+  } catch (error) {
+    ElMessage.error('获取场地列表失败')
+  }
+}
+
 const openAddDialog = () => {
   isEdit.value = false
-  form.value = { id: null, matchDate: '', location: '' }
+  form.value = { id: null, matchDate: '', location: '', season: seasonState.current }
   dialogVisible.value = true
 }
 
@@ -42,11 +55,16 @@ const handleSave = async () => {
     ElMessage.warning('请选择比赛日期')
     return
   }
+  if (!form.value.location) {
+    ElMessage.warning('请选择比赛场地')
+    return
+  }
   try {
     if (isEdit.value) {
       await axios.put(`/api/matches/${form.value.id}`, form.value)
       ElMessage.success('更新成功')
     } else {
+      form.value.season = seasonState.current
       await axios.post('/api/matches', form.value)
       ElMessage.success('添加成功')
     }
@@ -72,7 +90,14 @@ const handleDelete = async (row) => {
   }
 }
 
-onMounted(fetchMatches)
+watch(() => seasonState?.current, () => {
+  fetchMatches()
+})
+
+onMounted(() => {
+  fetchMatches()
+  fetchVenues()
+})
 </script>
 
 <template>
@@ -86,6 +111,7 @@ onMounted(fetchMatches)
 
     <el-table :data="matches" v-loading="loading" stripe>
       <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="season" label="赛季" width="100" />
       <el-table-column prop="matchDate" label="比赛日期" />
       <el-table-column prop="location" label="比赛地点" />
       <el-table-column prop="createdAt" label="创建时间" />
@@ -102,8 +128,10 @@ onMounted(fetchMatches)
         <el-form-item label="比赛日期">
           <el-date-picker v-model="form.matchDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="比赛地点">
-          <el-input v-model="form.location" placeholder="请输入比赛地点" />
+        <el-form-item label="比赛场地">
+          <el-select v-model="form.location" placeholder="请选择场地" style="width: 100%">
+            <el-option v-for="v in venues" :key="v.id" :label="v.name" :value="v.name" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>

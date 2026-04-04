@@ -1,15 +1,17 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, inject } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 const summaryData = ref([])
 const loading = ref(false)
+const seasonState = inject('seasonState')
 
 const fetchSummary = async () => {
   loading.value = true
   try {
-    const res = await axios.get('/api/attendances/summary')
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
+    const res = await axios.get('/api/attendances/summary', { params: { season } })
     summaryData.value = res.data
   } catch (error) {
     ElMessage.error('获取考勤汇总失败')
@@ -24,7 +26,13 @@ const getAttendanceRateColor = (rate) => {
   return '#f56c6c'
 }
 
-onMounted(fetchSummary)
+watch(() => seasonState?.current, () => {
+  fetchSummary()
+})
+
+onMounted(() => {
+  fetchSummary()
+})
 </script>
 
 <template>
@@ -39,16 +47,13 @@ onMounted(fetchSummary)
     <el-table :data="summaryData" v-loading="loading" stripe>
       <el-table-column prop="rank" label="排名" width="80" />
       <el-table-column prop="playerName" label="球员姓名" />
-      <el-table-column prop="phone" label="手机号" />
-      <el-table-column prop="totalMatches" label="参与场次" width="100" />
-      <el-table-column prop="presentCount" label="出勤次数" width="100" />
-      <el-table-column prop="absentCount" label="请假次数" width="100" />
-      <el-table-column label="出勤率" width="150">
+      <el-table-column prop="seasonMatchCount" label="当赛季比赛场次" width="140" />
+      <el-table-column prop="presentCount" label="当赛季参加次数" width="140" />
+      <el-table-column label="出勤率" width="120">
         <template #default="{ row }">
-          <el-progress
-            :percentage="Number(row.attendanceRate.toFixed(1))"
-            :color="getAttendanceRateColor(row.attendanceRate)"
-          />
+          <span :style="{ color: getAttendanceRateColor(row.attendanceRate) }">
+            {{ row.attendanceRate.toFixed(2) }}%
+          </span>
         </template>
       </el-table-column>
     </el-table>

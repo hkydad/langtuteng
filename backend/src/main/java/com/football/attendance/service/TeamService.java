@@ -23,16 +23,37 @@ public class TeamService {
         return teamMapper.selectList(new QueryWrapper<>());
     }
 
+    public List<Team> listBySeason(Integer season) {
+        if (season == null) {
+            return list();
+        }
+        return jdbcTemplate.query(
+            "SELECT * FROM team WHERE season = ? ORDER BY id",
+            (rs, rowNum) -> {
+                Team t = new Team();
+                t.setId(rs.getLong("id"));
+                t.setName(rs.getString("name"));
+                t.setSeason(rs.getObject("season") != null ? rs.getInt("season") : null);
+                return t;
+            }, season);
+    }
+
     public Team save(Team team) {
         if (team.getId() == null) {
             Number maxIdNum = jdbcTemplate.queryForObject("SELECT MAX(id) FROM team", Number.class);
             team.setId(maxIdNum == null ? 1 : maxIdNum.longValue() + 1);
-            jdbcTemplate.update("INSERT INTO team (id, name, created_at) VALUES (?, ?, ?)",
-                team.getId(), team.getName(), LocalDateTime.now());
-        } else {
-            jdbcTemplate.update("UPDATE team SET name = ? WHERE id = ?", team.getName(), team.getId());
         }
+        if (team.getSeason() == null) {
+            return team;
+        }
+        jdbcTemplate.update("INSERT INTO team (id, name, season, created_at) VALUES (?, ?, ?, ?)",
+            team.getId(), team.getName(), team.getSeason(), LocalDateTime.now());
         return team;
+    }
+
+    public int update(Team team) {
+        return jdbcTemplate.update("UPDATE team SET name = ?, season = ? WHERE id = ?",
+            team.getName(), team.getSeason(), team.getId());
     }
 
     public int delete(Long id) {

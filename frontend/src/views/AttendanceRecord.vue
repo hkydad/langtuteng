@@ -1,33 +1,54 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, inject, computed } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const matches = ref([])
-const players = ref([])
+const allPlayers = ref([])
 const selectedMatch = ref(null)
 const attendances = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const selectedPlayerIds = ref([])
+const seasonState = inject('seasonState')
+const searchName = ref('')
 
 const fetchMatches = async () => {
   try {
-    const res = await axios.get('/api/matches')
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
+    const res = await axios.get('/api/matches', { params: { season } })
     matches.value = res.data
   } catch (error) {
     ElMessage.error('获取比赛列表失败')
   }
 }
 
-const fetchPlayers = async () => {
+const fetchPlayersWithAttendance = async () => {
   try {
-    const res = await axios.get('/api/players')
-    players.value = res.data
+    const season = seasonState?.current || localStorage.getItem('currentSeason')
+    const [playersRes, summaryRes] = await Promise.all([
+      axios.get('/api/players', { params: { season } }),
+      axios.get('/api/attendances/summary', { params: { season } })
+    ])
+
+    const summaryMap = {}
+    summaryRes.data.forEach(s => {
+      summaryMap[s.playerId] = s.presentCount || 0
+    })
+
+    allPlayers.value = playersRes.data.map(p => ({
+      ...p,
+      presentCount: summaryMap[p.id] || 0
+    })).sort((a, b) => b.presentCount - a.presentCount)
   } catch (error) {
     ElMessage.error('获取球员列表失败')
   }
 }
+
+const filteredPlayers = computed(() => {
+  if (!searchName.value) return allPlayers.value
+  return allPlayers.value.filter(p => p.name.includes(searchName.value))
+})
 
 const fetchAttendances = async () => {
   if (!selectedMatch.value) return
@@ -47,7 +68,8 @@ const openAttendanceDialog = () => {
     ElMessage.warning('请先选择一场比赛')
     return
   }
-  selectedPlayerIds.value = []
+  searchName.value = ''
+  selectedPlayerIds.value = attendances.value.map(a => a.playerId)
   dialogVisible.value = true
 }
 
@@ -87,9 +109,15 @@ const handleDelete = async (row) => {
   }
 }
 
+watch(() => seasonState?.current, () => {
+  selectedMatch.value = null
+  attendances.value = []
+  fetchMatches()
+})
+
 onMounted(() => {
   fetchMatches()
-  fetchPlayers()
+  fetchPlayersWithAttendance()
 })
 </script>
 
@@ -129,10 +157,14 @@ onMounted(() => {
     </el-table>
 
     <el-dialog v-model="dialogVisible" title="考勤登记" width="600px">
-      <div style="margin-bottom: 10px">
+      <div style="margin-bottom: 15px">
+        <el-input v-model="searchName" placeholder="搜索球员姓名" style="width: 200px" clearable />
+      </div>
+      <div style="max-height: 400px; overflow-y: auto">
         <el-checkbox-group v-model="selectedPlayerIds">
-          <el-checkbox v-for="player in players" :key="player.id" :value="player.id" style="margin: 5px 10px">
-            {{ player.name }} ({{ player.memberLevel === 500 ? '500' : player.memberLevel === 200 ? '200' : '-' }})
+          <el-checkbox v-for="player in filteredPlayers" :key="player.id" :value="player.id" style="margin: 5px 10px; display: flex">
+            <span style="min-width: 80px">{{ player.name }}</span>
+            <span style="color: #999; font-size: 12px; margin-left: 10px">出勤{{ player.presentCount }}次</span>
           </el-checkbox>
         </el-checkbox-group>
       </div>

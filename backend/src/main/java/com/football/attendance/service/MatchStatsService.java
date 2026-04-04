@@ -123,43 +123,100 @@ public class MatchStatsService {
             }, quarterId);
     }
 
-    public List<Map<String, Object>> getGoalLeaderboard() {
-        return jdbcTemplate.query("SELECT player_id, player_name, team_name, COUNT(*) as goal_count FROM match_goal GROUP BY player_id, player_name, team_name ORDER BY goal_count DESC",
-            (rs, rowNum) -> {
-                Map<String, Object> item = new HashMap<>();
-                item.put("playerId", rs.getLong("player_id"));
-                item.put("playerName", rs.getString("player_name"));
-                item.put("teamName", rs.getString("team_name"));
-                item.put("goalCount", rs.getInt("goal_count"));
-                return item;
-            });
+    public List<Map<String, Object>> getGoalLeaderboard(Integer season) {
+        String sql = season != null
+            ? "SELECT g.player_id, g.player_name, g.team_name, COUNT(*) as goal_count FROM match_goal g " +
+              "LEFT JOIN match_quarter q ON g.quarter_id = q.id " +
+              "LEFT JOIN football_match m ON q.match_id = m.id " +
+              "WHERE m.season = ? OR m.season IS NULL " +
+              "GROUP BY g.player_id, g.player_name, g.team_name ORDER BY goal_count DESC"
+            : "SELECT player_id, player_name, team_name, COUNT(*) as goal_count FROM match_goal GROUP BY player_id, player_name, team_name ORDER BY goal_count DESC";
+
+        if (season != null) {
+            return jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("playerId", rs.getLong("player_id"));
+                    item.put("playerName", rs.getString("player_name"));
+                    item.put("teamName", rs.getString("team_name"));
+                    item.put("goalCount", rs.getInt("goal_count"));
+                    return item;
+                }, season);
+        } else {
+            return jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("playerId", rs.getLong("player_id"));
+                    item.put("playerName", rs.getString("player_name"));
+                    item.put("teamName", rs.getString("team_name"));
+                    item.put("goalCount", rs.getInt("goal_count"));
+                    return item;
+                });
+        }
     }
 
-    public List<Map<String, Object>> getAssistLeaderboard() {
-        return jdbcTemplate.query("SELECT player_id, player_name, team_name, COUNT(*) as assist_count FROM match_assist GROUP BY player_id, player_name, team_name ORDER BY assist_count DESC",
-            (rs, rowNum) -> {
-                Map<String, Object> item = new HashMap<>();
-                item.put("playerId", rs.getLong("player_id"));
-                item.put("playerName", rs.getString("player_name"));
-                item.put("teamName", rs.getString("team_name"));
-                item.put("assistCount", rs.getInt("assist_count"));
-                return item;
-            });
+    public List<Map<String, Object>> getAssistLeaderboard(Integer season) {
+        String sql = season != null
+            ? "SELECT a.player_id, a.player_name, a.team_name, COUNT(*) as assist_count FROM match_assist a " +
+              "LEFT JOIN match_quarter q ON a.quarter_id = q.id " +
+              "LEFT JOIN football_match m ON q.match_id = m.id " +
+              "WHERE m.season = ? OR m.season IS NULL " +
+              "GROUP BY a.player_id, a.player_name, a.team_name ORDER BY assist_count DESC"
+            : "SELECT player_id, player_name, team_name, COUNT(*) as assist_count FROM match_assist GROUP BY player_id, player_name, team_name ORDER BY assist_count DESC";
+
+        if (season != null) {
+            return jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("playerId", rs.getLong("player_id"));
+                    item.put("playerName", rs.getString("player_name"));
+                    item.put("teamName", rs.getString("team_name"));
+                    item.put("assistCount", rs.getInt("assist_count"));
+                    return item;
+                }, season);
+        } else {
+            return jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("playerId", rs.getLong("player_id"));
+                    item.put("playerName", rs.getString("player_name"));
+                    item.put("teamName", rs.getString("team_name"));
+                    item.put("assistCount", rs.getInt("assist_count"));
+                    return item;
+                });
+        }
     }
 
-    public List<Map<String, Object>> getGoalkeeperLeaderboard() {
-        List<GoalkeeperRecord> allGoalkeepers = jdbcTemplate.query(
-            "SELECT gk.id, gk.quarter_id, gk.player_id, gk.player_name, gk.team_name, q.match_id " +
-            "FROM match_goalkeeper gk LEFT JOIN match_quarter q ON gk.quarter_id = q.id",
-            (rs, rowNum) -> {
-                GoalkeeperRecord gk = new GoalkeeperRecord();
-                gk.setId(rs.getLong("id"));
-                gk.setQuarterId(rs.getLong("quarter_id"));
-                gk.setPlayerId(rs.getLong("player_id"));
-                gk.setPlayerName(rs.getString("player_name"));
-                gk.setTeamName(rs.getString("team_name"));
-                return gk;
-            });
+    public List<Map<String, Object>> getGoalkeeperLeaderboard(Integer season) {
+        String baseSql = season != null
+            ? "SELECT gk.id, gk.quarter_id, gk.player_id, gk.player_name, gk.team_name, q.match_id, m.season " +
+              "FROM match_goalkeeper gk LEFT JOIN match_quarter q ON gk.quarter_id = q.id " +
+              "LEFT JOIN football_match m ON q.match_id = m.id WHERE m.season = ?"
+            : "SELECT gk.id, gk.quarter_id, gk.player_id, gk.player_name, gk.team_name, q.match_id, m.season " +
+              "FROM match_goalkeeper gk LEFT JOIN match_quarter q ON gk.quarter_id = q.id " +
+              "LEFT JOIN football_match m ON q.match_id = m.id";
+
+        List<GoalkeeperRecord> allGoalkeepers = season != null
+            ? jdbcTemplate.query(baseSql,
+                (rs, rowNum) -> {
+                    GoalkeeperRecord gk = new GoalkeeperRecord();
+                    gk.setId(rs.getLong("id"));
+                    gk.setQuarterId(rs.getLong("quarter_id"));
+                    gk.setPlayerId(rs.getLong("player_id"));
+                    gk.setPlayerName(rs.getString("player_name"));
+                    gk.setTeamName(rs.getString("team_name"));
+                    return gk;
+                }, season)
+            : jdbcTemplate.query(baseSql,
+                (rs, rowNum) -> {
+                    GoalkeeperRecord gk = new GoalkeeperRecord();
+                    gk.setId(rs.getLong("id"));
+                    gk.setQuarterId(rs.getLong("quarter_id"));
+                    gk.setPlayerId(rs.getLong("player_id"));
+                    gk.setPlayerName(rs.getString("player_name"));
+                    gk.setTeamName(rs.getString("team_name"));
+                    return gk;
+                });
 
         Map<Long, Map<String, Object>> playerStats = new LinkedHashMap<>();
 

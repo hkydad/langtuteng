@@ -35,8 +35,8 @@ public class AttendanceController {
     }
 
     @GetMapping("/summary")
-    public List<Map<String, Object>> getSummary() {
-        return attendanceService.getSummary();
+    public List<Map<String, Object>> getSummary(@RequestParam(required = false) Integer season) {
+        return attendanceService.getSummary(season);
     }
 
     @DeleteMapping("/{id}")
