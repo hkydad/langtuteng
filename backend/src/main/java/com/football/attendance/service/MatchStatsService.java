@@ -239,18 +239,11 @@ public class MatchStatsService {
             int currentScore = ((Number) stat.get("totalScore")).intValue();
             stat.put("totalScore", currentScore + 1);
 
-            Long matchId = jdbcTemplate.queryForObject(
-                "SELECT match_id FROM match_quarter WHERE id = ?", Long.class, gk.getQuarterId());
-
-            if (matchId != null) {
-                boolean isCleanSheet = checkCleanSheet(matchId, teamName);
-                if (isCleanSheet) {
-                    int cleanSheets = ((Number) stat.get("cleanSheetCount")).intValue();
-                    if (cleanSheets == 0) {
-                        stat.put("totalScore", ((Number) stat.get("totalScore")).intValue() + 3);
-                    }
-                    stat.put("cleanSheetCount", cleanSheets + 1);
-                }
+            boolean isCleanSheet = checkCleanSheet(gk.getQuarterId(), teamName);
+            if (isCleanSheet) {
+                int cleanSheets = ((Number) stat.get("cleanSheetCount")).intValue();
+                stat.put("totalScore", ((Number) stat.get("totalScore")).intValue() + 3);
+                stat.put("cleanSheetCount", cleanSheets + 1);
             }
         }
 
@@ -264,9 +257,11 @@ public class MatchStatsService {
         return result;
     }
 
-    private boolean checkCleanSheet(Long matchId, String teamName) {
+    private boolean checkCleanSheet(Long quarterId, String teamName) {
+        if (teamName == null || teamName.trim().isEmpty()) return false;
+        String trimmedTeamName = teamName.trim();
         List<QuarterStat> quarters = jdbcTemplate.query(
-            "SELECT * FROM match_quarter WHERE match_id = ?",
+            "SELECT * FROM match_quarter WHERE id = ?",
             (rs, rowNum) -> {
                 QuarterStat q = new QuarterStat();
                 q.setId(rs.getLong("id"));
@@ -276,18 +271,18 @@ public class MatchStatsService {
                 q.setTeam1Score(rs.getInt("team1_score"));
                 q.setTeam2Score(rs.getInt("team2_score"));
                 return q;
-            }, matchId);
+            }, quarterId);
 
-        int totalGoalsConceded = 0;
-        for (QuarterStat q : quarters) {
-            if (q.getTeam1Name().equals(teamName)) {
-                totalGoalsConceded += q.getTeam2Score();
-            } else if (q.getTeam2Name().equals(teamName)) {
-                totalGoalsConceded += q.getTeam1Score();
-            }
+        if (quarters.isEmpty()) return false;
+        QuarterStat q = quarters.get(0);
+        String t1 = q.getTeam1Name() != null ? q.getTeam1Name().trim() : "";
+        String t2 = q.getTeam2Name() != null ? q.getTeam2Name().trim() : "";
+        if (t1.equals(trimmedTeamName)) {
+            return q.getTeam2Score() != null && q.getTeam2Score() == 0;
+        } else if (t2.equals(trimmedTeamName)) {
+            return q.getTeam1Score() != null && q.getTeam1Score() == 0;
         }
-
-        return totalGoalsConceded == 0;
+        return false;
     }
 
     public void deleteGoal(Long id) {
@@ -300,5 +295,128 @@ public class MatchStatsService {
 
     public void deleteGoalkeeper(Long id) {
         jdbcTemplate.update("DELETE FROM match_goalkeeper WHERE id = ?", id);
+    }
+
+    public List<Map<String, Object>> getTeamStandingLeaderboard(Integer season) {
+        String sql = season != null
+            ? "SELECT q.team1_name as team_name, q.team1_score, q.team2_score FROM match_quarter q " +
+              "LEFT JOIN football_match m ON q.match_id = m.id WHERE m.season = ?"
+            : "SELECT q.team1_name as team_name, q.team1_score, q.team2_score FROM match_quarter q";
+
+        List<QuarterStat> quarters = season != null
+            ? jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    QuarterStat q = new QuarterStat();
+                    q.setTeam1Name(rs.getString("team_name"));
+                    q.setTeam1Score(rs.getInt("team1_score"));
+                    q.setTeam2Score(rs.getInt("team2_score"));
+                    return q;
+                }, season)
+            : jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    QuarterStat q = new QuarterStat();
+                    q.setTeam1Name(rs.getString("team_name"));
+                    q.setTeam1Score(rs.getInt("team1_score"));
+                    q.setTeam2Score(rs.getInt("team2_score"));
+                    return q;
+                });
+
+        // Also need team2 rows
+        String sql2 = season != null
+            ? "SELECT q.team2_name as team_name, q.team2_score, q.team1_score FROM match_quarter q " +
+              "LEFT JOIN football_match m ON q.match_id = m.id WHERE m.season = ?"
+            : "SELECT q.team2_name as team_name, q.team2_score, q.team1_score FROM match_quarter q";
+
+        List<QuarterStat> team2Quarters = season != null
+            ? jdbcTemplate.query(sql2,
+                (rs, rowNum) -> {
+                    QuarterStat q = new QuarterStat();
+                    q.setTeam1Name(rs.getString("team_name"));
+                    q.setTeam1Score(rs.getInt("team2_score"));
+                    q.setTeam2Score(rs.getInt("team1_score"));
+                    return q;
+                }, season)
+            : jdbcTemplate.query(sql2,
+                (rs, rowNum) -> {
+                    QuarterStat q = new QuarterStat();
+                    q.setTeam1Name(rs.getString("team_name"));
+                    q.setTeam1Score(rs.getInt("team2_score"));
+                    q.setTeam2Score(rs.getInt("team1_score"));
+                    return q;
+                });
+
+        // Aggregate
+        Map<String, Map<String, Integer>> teamStats = new LinkedHashMap<>();
+        for (QuarterStat q : quarters) {
+            aggregateTeam(q.getTeam1Name(), q.getTeam1Score(), q.getTeam2Score(), teamStats);
+        }
+        for (QuarterStat q : team2Quarters) {
+            aggregateTeam(q.getTeam1Name(), q.getTeam1Score(), q.getTeam2Score(), teamStats);
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, Map<String, Integer>> entry : teamStats.entrySet()) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("teamName", entry.getKey());
+            int points = entry.getValue().get("points");
+            int goalsScored = entry.getValue().get("goalsScored");
+            int goalsConceded = entry.getValue().get("goalsConceded");
+            row.put("points", points);
+            row.put("goalsScored", goalsScored);
+            row.put("goalsConceded", goalsConceded);
+            row.put("goalDifference", goalsScored - goalsConceded);
+            result.add(row);
+        }
+
+        // Sort: points DESC, goalDifference DESC, goalsScored DESC
+        result.sort((a, b) -> {
+            int cmp = ((Number) b.get("points")).intValue() - ((Number) a.get("points")).intValue();
+            if (cmp != 0) return cmp;
+            cmp = ((Number) b.get("goalDifference")).intValue() - ((Number) a.get("goalDifference")).intValue();
+            if (cmp != 0) return cmp;
+            return ((Number) b.get("goalsScored")).intValue() - ((Number) a.get("goalsScored")).intValue();
+        });
+
+        // Assign ranks (same rank for ties)
+        int rank = 1;
+        for (int i = 0; i < result.size(); i++) {
+            if (i > 0) {
+                Map<String, Object> prev = result.get(i - 1);
+                Map<String, Object> curr = result.get(i);
+                int prevPoints = ((Number) prev.get("points")).intValue();
+                int prevGd = ((Number) prev.get("goalDifference")).intValue();
+                int prevGs = ((Number) prev.get("goalsScored")).intValue();
+                int currPoints = ((Number) curr.get("points")).intValue();
+                int currGd = ((Number) curr.get("goalDifference")).intValue();
+                int currGs = ((Number) curr.get("goalsScored")).intValue();
+                if (currPoints == prevPoints && currGd == prevGd && currGs == prevGs) {
+                    // same rank
+                } else {
+                    rank = i + 1;
+                }
+            }
+            result.get(i).put("rank", rank);
+        }
+
+        return result;
+    }
+
+    private void aggregateTeam(String teamName, int scored, int conceded, Map<String, Map<String, Integer>> teamStats) {
+        if (teamName == null || teamName.isEmpty()) return;
+        if (!teamStats.containsKey(teamName)) {
+            Map<String, Integer> stats = new HashMap<>();
+            stats.put("points", 0);
+            stats.put("goalsScored", 0);
+            stats.put("goalsConceded", 0);
+            teamStats.put(teamName, stats);
+        }
+        Map<String, Integer> stats = teamStats.get(teamName);
+        stats.put("goalsScored", stats.get("goalsScored") + scored);
+        stats.put("goalsConceded", stats.get("goalsConceded") + conceded);
+        if (scored > conceded) {
+            stats.put("points", stats.get("points") + 3);
+        } else if (scored == conceded) {
+            stats.put("points", stats.get("points") + 1);
+        }
     }
 }

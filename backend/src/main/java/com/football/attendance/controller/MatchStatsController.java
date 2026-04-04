@@ -90,4 +90,9 @@ public class MatchStatsController {
     public List<Map<String, Object>> getGoalkeeperLeaderboard(@RequestParam(required = false) Integer season) {
         return matchStatsService.getGoalkeeperLeaderboard(season);
     }
+
+    @GetMapping("/leaderboard/team-standings")
+    public List<Map<String, Object>> getTeamStandingLeaderboard(@RequestParam(required = false) Integer season) {
+        return matchStatsService.getTeamStandingLeaderboard(season);
+    }
 }
