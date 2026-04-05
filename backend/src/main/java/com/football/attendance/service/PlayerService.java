@@ -66,4 +66,8 @@ public class PlayerService {
     public int delete(Long id) {
         return playerMapper.deleteById(id);
     }
+
+    public int batchUpdateMemberLevel(Integer fromLevel, Integer toLevel) {
+        return jdbcTemplate.update("UPDATE player SET member_level = ? WHERE member_level = ?", toLevel, fromLevel);
+    }
 }

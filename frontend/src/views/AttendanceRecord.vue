@@ -143,7 +143,7 @@ onMounted(() => {
       <el-table-column prop="playerId" label="ID" width="80" />
       <el-table-column prop="memberLevel" label="会员等级" width="120">
         <template #default="{ row }">
-          {{ row.memberLevel === 500 ? '500' : row.memberLevel === 200 ? '200' : '-' }}
+          {{ row.memberLevel === 450 ? '450' : row.memberLevel === 200 ? '200' : '-' }}
         </template>
       </el-table-column>
       <el-table-column prop="playerName" label="球员姓名" />

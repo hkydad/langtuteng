@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, inject } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import * as XLSX from 'xlsx'
 
 const summaryData = ref([])
 const loading = ref(false)
@@ -33,6 +34,28 @@ watch(() => seasonState?.current, () => {
 onMounted(() => {
   fetchSummary()
 })
+
+const handleExport = () => {
+  if (summaryData.value.length === 0) {
+    ElMessage.warning('暂无数据可导出')
+    return
+  }
+  const season = seasonState?.current || localStorage.getItem('currentSeason')
+  const seasonText = season ? `${season}赛季` : ''
+  const header = [['排名', '球员姓名', '当赛季比赛场次', '当赛季参加次数', '出勤率']]
+  const rows = summaryData.value.map(s => [
+    s.rank,
+    s.playerName,
+    s.seasonMatchCount,
+    s.presentCount,
+    s.attendanceRate.toFixed(2) + '%'
+  ])
+  const data = [...header, ...rows]
+  const ws = XLSX.utils.aoa_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '考勤汇总')
+  XLSX.writeFile(wb, `考勤汇总_${seasonText}.xlsx`)
+}
 </script>
 
 <template>
@@ -41,6 +64,7 @@ onMounted(() => {
       <div style="display: flex; justify-content: space-between; align-items: center">
         <span>考勤汇总排名</span>
         <el-button type="primary" @click="fetchSummary">刷新</el-button>
+        <el-button type="success" @click="handleExport" style="margin-left: 10px">导出Excel</el-button>
       </div>
     </template>
 

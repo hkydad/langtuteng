@@ -41,6 +41,19 @@ const fetchTeams = async () => {
   }
 }
 
+const handleBatchUpdateLevel = async () => {
+  try {
+    await ElMessageBox.confirm('将把所有会员等级从 500 批量修改为 450，确定吗？', '提示', { type: 'warning' })
+    await axios.put('/api/players/batch-member-level?from=500&to=450')
+    ElMessage.success('修改成功')
+    fetchPlayers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('修改失败')
+    }
+  }
+}
+
 const openAddDialog = () => {
   isEdit.value = false
   form.value = { id: null, name: '', phone: '', memberLevel: null, teamName: '', season: seasonState.current }
@@ -106,6 +119,7 @@ onMounted(() => {
       <div style="display: flex; justify-content: space-between; align-items: center">
         <span>球员管理</span>
         <el-button type="primary" @click="openAddDialog">添加球员</el-button>
+        <el-button type="warning" @click="handleBatchUpdateLevel" style="margin-left: 10px">批量修改会员等级</el-button>
       </div>
     </template>
 
@@ -113,7 +127,7 @@ onMounted(() => {
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="memberLevel" label="会员等级" width="120">
         <template #default="{ row }">
-          {{ row.memberLevel === 500 ? '500' : row.memberLevel === 200 ? '200' : '-' }}
+          {{ row.memberLevel === 450 ? '450' : row.memberLevel === 200 ? '200' : '-' }}
         </template>
       </el-table-column>
       <el-table-column prop="teamName" label="所属队伍" />
@@ -138,7 +152,7 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="会员等级">
           <el-select v-model="form.memberLevel" placeholder="请选择会员等级" style="width: 100%">
-            <el-option :value="500" label="500" />
+            <el-option :value="450" label="450" />
             <el-option :value="200" label="200" />
           </el-select>
         </el-form-item>

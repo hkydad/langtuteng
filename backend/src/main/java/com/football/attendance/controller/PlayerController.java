@@ -45,4 +45,9 @@ public class PlayerController {
     public void delete(@PathVariable Long id) {
         playerService.delete(id);
     }
+
+    @PutMapping("/batch-member-level")
+    public void batchUpdateMemberLevel(@RequestParam Integer from, @RequestParam Integer to) {
+        playerService.batchUpdateMemberLevel(from, to);
+    }
 }
